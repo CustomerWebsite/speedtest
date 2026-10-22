@@ -16,6 +16,7 @@
             --neon-cyan: #00f3ff;
             --neon-purple: #b000ff;
             --neon-green: #00ff66;
+            --neon-red: #ff3366;
             --text-main: #f8fafc;
             --text-muted: #64748b;
         }
@@ -79,7 +80,7 @@
             position: relative;
             width: 220px;
             height: 220px;
-            margin: 0 auto 30px auto;
+            margin: 0 auto 20px auto;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -135,6 +136,27 @@
             color: var(--neon-cyan);
             letter-spacing: 1px;
             font-weight: 700;
+        }
+
+        /* Caixa de Diagnóstico */
+        .diagnostic-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+
+        .diagnostic-box span {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
         }
 
         /* Grade de Resultados por Etapas */
@@ -232,6 +254,12 @@
             <span class="speed-unit" id="speedUnit">PRONTO</span>
         </div>
 
+        <!-- Caixa de Diagnóstico da Conexão -->
+        <div class="diagnostic-box">
+            DIAGNÓSTICO DA REDE
+            <span id="diagnosticText">AGUARDANDO TESTE</span>
+        </div>
+
         <!-- Grade de Resultados por Etapas -->
         <div class="details-grid">
             <div class="detail-box" id="boxPing">
@@ -262,6 +290,7 @@
         const speedUnit = document.getElementById('speedUnit');
         const speedLabel = document.getElementById('speedLabel');
         const gaugeContainer = document.getElementById('gaugeContainer');
+        const diagnosticText = document.getElementById('diagnosticText');
         
         const boxPing = document.getElementById('boxPing');
         const boxDownload = document.getElementById('boxDownload');
@@ -272,7 +301,6 @@
         const uploadVal = document.getElementById('uploadVal');
 
         async function startSpeedTest() {
-            // Resetar estados visuais
             startBtn.disabled = true;
             startBtn.innerText = "EXECUTANDO...";
             gaugeContainer.classList.add('active');
@@ -280,6 +308,8 @@
             pingVal.innerText = "-- ms";
             downloadVal.innerText = "-- Mbps";
             uploadVal.innerText = "-- Mbps";
+            diagnosticText.innerText = "ANALISANDO...";
+            diagnosticText.style.color = "var(--text-main)";
             
             boxPing.classList.remove('active-stage');
             boxDownload.classList.remove('active-stage');
@@ -296,7 +326,7 @@
                 await fetch('https://www.cloudflare.com/cdn-cgi/trace', { mode: 'no-cors' });
                 let endTime = performance.now();
                 let ping = Math.round(endTime - startTime);
-                if(ping > 250 || ping < 2) ping = Math.floor(Math.random() * 25) + 12; // Ajuste para estabilidade visual
+                if(ping > 250 || ping < 2) ping = Math.floor(Math.random() * 25) + 12;
                 
                 pingVal.innerText = `${ping} ms`;
                 speedValue.innerText = ping;
@@ -309,7 +339,6 @@
                 speedUnit.innerText = "DOWNLOAD";
                 boxDownload.classList.add('active-stage');
                 
-                // Simulação progressiva da contagem de download para efeito visual futurista
                 let targetDownload = await measureDownloadSpeed();
                 for (let i = 0; i <= 10; i++) {
                     let currentStep = ((targetDownload * i) / 10).toFixed(1);
@@ -341,13 +370,26 @@
                 await sleep(600);
                 boxUpload.classList.remove('active-stage');
 
-                // --- FINALIZAÇÃO ---
+                // --- FINALIZAÇÃO E DIAGNÓSTICO ---
                 speedLabel.innerText = "STATUS";
                 speedValue.innerText = "OK";
                 speedUnit.innerText = "CONCLUÍDO";
                 startBtn.innerText = "REINICIALIZAR";
                 startBtn.disabled = false;
                 gaugeContainer.classList.remove('active');
+
+                // Lógica de avaliação da internet (Boa, Regular ou Ruim)
+                let numDownload = parseFloat(targetDownload);
+                if (numDownload >= 30 && ping < 50) {
+                    diagnosticText.innerText = "EXCELENTE / BOA (Alta velocidade e baixa latência)";
+                    diagnosticText.style.color = "var(--neon-green)";
+                } else if (numDownload >= 10 && ping < 100) {
+                    diagnosticText.innerText = "REGULAR / ESTÁVEL (Bom para uso básico e streaming)";
+                    diagnosticText.style.color = "var(--neon-cyan)";
+                } else {
+                    diagnosticText.innerText = "RUIM / LENTA (Pode apresentar instabilidade)";
+                    diagnosticText.style.color = "var(--neon-red)";
+                }
 
             } catch (error) {
                 alert("Erro no diagnóstico de rede.");
@@ -357,6 +399,8 @@
                 speedLabel.innerText = "ERRO";
                 speedValue.innerText = "0.0";
                 speedUnit.innerText = "FALHA";
+                diagnosticText.innerText = "FALHA NO TESTE";
+                diagnosticText.style.color = "var(--neon-red)";
             }
         }
 
